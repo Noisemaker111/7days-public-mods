@@ -38,9 +38,9 @@ namespace JonCategoryStorage
             // extra categories during the same click.
             var categories = new HashSet<string>(StringComparer.Ordinal);
             IEnumerable<ItemStack> stacks = null;
-            if (__2 is ITileEntityLootable loot) stacks = loot.items;
-            else if (__2 is Bag bag) stacks = bag.GetSlots();
-            else if (__2 is Inventory inventory) stacks = inventory.GetSlots();
+            if (__2 is TEFeatureStorage loot) stacks = loot.ItemGrid?.items;
+            else if (__2 is Bag bag) stacks = bag.ItemGrid.items;
+            else if (__2 is Inventory inventory) stacks = inventory.ItemGrid.items;
             else if (__2 is XUiM_PlayerInventory player) stacks = player.GetAllItemStacks();
             if (stacks != null)
                 foreach (var stack in stacks)

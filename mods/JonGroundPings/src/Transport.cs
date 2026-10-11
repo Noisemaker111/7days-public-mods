@@ -17,7 +17,6 @@ namespace JonGroundPings
             if (payload.Length != length) throw new EndOfStreamException();
         }
         public override void write(PooledBinaryWriter writer) { base.write(writer); writer.Write(payload.Length); writer.Write(payload); }
-        public override int GetLength() { return payload.Length + 6; }
         public override void ProcessPackage(World world, GameManager manager) { TeamTransport.Receive?.Invoke(payload, Sender); }
     }
     public static class TeamTransport
