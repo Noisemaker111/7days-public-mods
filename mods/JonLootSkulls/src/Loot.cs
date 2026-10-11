@@ -5,8 +5,8 @@ namespace JonLootSkulls
     [HarmonyPatch(typeof(XUiC_LootWindow), "OnClose")]
     public static class LootClosed
     {
-        public static void Prefix(XUiC_LootWindow __instance, out ITileEntityLootable __state) { __state = __instance.te; }
-        public static void Postfix(ITileEntityLootable __state) { Runtime.Instance?.ObserveLoot(__state); }
+        public static void Prefix(XUiC_LootWindow __instance, out TEFeatureStorage __state) { __state = __instance.te; }
+        public static void Postfix(TEFeatureStorage __state) { Runtime.Instance?.ObserveLoot(__state); }
     }
     // Native storage read is also the client's chunk/network replication boundary.
     [HarmonyPatch(typeof(TEFeatureStorage), "Read")]
@@ -19,11 +19,12 @@ namespace JonLootSkulls
     {
         public struct Before { public ulong Time; public bool Touched; }
         public static void Prefix(TEFeatureStorage __instance, out Before __state)
-        { __state = new Before { Time = __instance.worldTimeTouched, Touched = __instance.bTouched }; }
+        { var grid = __instance.ItemGrid; __state = new Before { Time = grid == null ? 0 : grid.WorldTimeTouched, Touched = grid != null && grid.Touched }; }
         public static void Postfix(TEFeatureStorage __instance, Before __state)
         {
             // Native nearby-player deferral extends the real respawn clock.
-            if (__state.Time != __instance.worldTimeTouched || __state.Touched != __instance.bTouched) Runtime.Instance?.ObserveLoot(__instance);
+            var grid = __instance.ItemGrid;
+            if (grid != null && (__state.Time != grid.WorldTimeTouched || __state.Touched != grid.Touched)) Runtime.Instance?.ObserveLoot(__instance);
         }
     }
     [HarmonyPatch(typeof(TEFeatureStorage), "OnUnlockedServer")]

@@ -46,7 +46,7 @@ namespace JonLootSkulls
             catch (Exception error) { Log.Warning("[JonLootSkulls] Saving loot history: " + error.Message); }
         }
         public void ClearPoi(int id) { Loot.ClearPoi(id); SaveLoot(); }
-        public void ObserveLoot(ITileEntityLootable container)
+        public void ObserveLoot(TEFeatureStorage container)
         {
             // A queued chunk-read callback can outlive a source hot reload.
             // The retired runtime must never overwrite the replacement's ledger.
@@ -62,21 +62,23 @@ namespace JonLootSkulls
                 });
                 return;
             }
-            if (container is TEFeatureStorage removed && removed.Parent == null) return;
+            // V3.3 keeps a storage's touched time and player ownership on its item grid.
+            var grid = container.ItemGrid;
+            if (container.Parent == null || grid == null) return;
             OpenWorld();
             Vector3i position = container.ToWorldPos();
             string key = position.x + "," + position.y + "," + position.z;
-            bool playerPlaced = container is TEFeatureStorage storage && storage.Parent.PlayerPlaced;
+            bool playerPlaced = container.Parent.PlayerPlaced;
             // Only containers that belong to a POI building count; a nest or
             // trash pile out in the open never gets a marker.
             var poi = GameManager.Instance.World.GetPOIAtPosition(position.ToVector3(), null, null);
             if (poi != null) Changed(poi.id);
-            if (poi == null || container.bPlayerStorage || playerPlaced || !container.bTouched)
+            if (poi == null || grid.PlayerOwned || playerPlaced || !grid.Touched)
             {
                 if (Loot.Records.Remove(key)) SaveLoot();
                 return;
             }
-            int touched = GameUtils.WorldTimeToTotalHours(container.worldTimeTouched);
+            int touched = GameUtils.WorldTimeToTotalHours(grid.WorldTimeTouched);
             if (Loot.Records.TryGetValue(key, out var old) && old.TouchedHours == touched && old.PoiId == poi.id) return;
             Vector3 anchor = poi.boundingBoxPosition.ToVector3() + new Vector3(poi.boundingBoxSize.x / 2f, poi.boundingBoxSize.y + 3, poi.boundingBoxSize.z / 2f);
             Loot.Records[key] = new LootRecord { Key=key, X=position.x,Y=position.y,Z=position.z, PoiId=poi.id,
@@ -103,8 +105,8 @@ namespace JonLootSkulls
                 if (origin.x + 16 < min.x || origin.x > max.x || origin.z + 16 < min.z || origin.z > max.z) continue;
                 foreach (var te in chunk.GetTileEntities().list)
                 {
-                    if (!te.TryGetSelfOrFeature<ITileEntityLootable>(out var loot) || loot.bPlayerStorage) continue;
-                    if (loot is TEFeatureStorage storage && (storage.Parent == null || storage.Parent.PlayerPlaced)) continue;
+                    if (!te.TryGetSelfOrFeature<TEFeatureStorage>(out var loot) || loot.ItemGrid == null || loot.ItemGrid.PlayerOwned) continue;
+                    if (loot.Parent == null || loot.Parent.PlayerPlaced) continue;
                     var at = te.ToWorldPos();
                     if (at.x >= min.x && at.x < max.x && at.y >= min.y && at.y < max.y && at.z >= min.z && at.z < max.z) total++;
                 }
